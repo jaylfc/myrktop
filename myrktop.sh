@@ -67,7 +67,7 @@ done
 echo "--------------------------------------"
 
 # 🎮 GPU Load & Frequency
-gpu_path="/sys/class/devfreq/fb000000.gpu"
+gpu_path="/sys/devices/platform/fb000000.gpu-panthor/devfreq/fb000000.gpu-panthor"
 if [ -d "$gpu_path" ]; then
     gpu_load=$(awk -F'[@ ]' '{print $1}' "$gpu_path/load" 2>/dev/null || echo "N/A")
     gpu_freq=$(cat "$gpu_path/cur_freq" 2>/dev/null || echo "N/A")
