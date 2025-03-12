@@ -1,71 +1,68 @@
-# myrktop - System Monitor with Orange Pi 5 Plus Support
+# myrktop - Orange Pi 5 Plus System Monitor
 
-A system monitoring tool with specialized support for the Orange Pi 5 Plus, forked from the original myrktop project.
+A system monitoring tool optimized for the Orange Pi 5 Plus, showing CPU, GPU, NPU, RGA, memory usage and temperatures.
 
 ## Features
 
-- CPU usage and frequency monitoring
-    - Orange Pi 5 Plus: All 8 cores (4x Cortex-A76 & 4x Cortex-A55)
-    - Other platforms: Automatic core detection
+- CPU monitoring (8 cores)
+    - CPU usage per core
+    - CPU frequency per core
+    - Total CPU load
 - GPU monitoring
-    - Orange Pi 5 Plus: Mali-G610 MC4 load and frequency
-    - Other platforms: Basic GPU stats where available
+    - GPU load
+    - GPU frequency
+- NPU monitoring
+    - 3 core usage
+    - NPU frequency
+- RGA monitoring
+    - Load for 2x RGA3 and 1x RGA2
 - Memory monitoring
-    - RAM usage and statistics
-    - Swap usage tracking
-- Temperature monitoring for various system components
-- Device information display
-
-### Orange Pi 5 Plus Specific Features
-
-When running on an Orange Pi 5 Plus, additional features are automatically enabled:
-- NPU (Neural Processing Unit) monitoring for all 3 cores
-- RGA (2D Graphics Accelerator) load monitoring for RGA2/RGA3
-- Optimized thermal zone mapping for accurate temperature readings
-- Specialized paths for RK3588 hardware components
-- Dynamic CPU core detection and monitoring
-
-## Requirements
-
-### General Requirements
-- Linux-based operating system
-- Basic system utilities (`free`, `sensors`)
-
-### Orange Pi 5 Plus Additional Requirements
-- `sudo` access (required for RGA and NPU monitoring)
-- RK3588 specific tools (usually pre-installed)
+    - RAM usage
+    - Swap usage
+- Temperature monitoring
+    - CPU cores
+    - GPU
+    - NPU
+    - Board sensors
 
 ## Installation
 
 ```bash
+# Clone the repository
 git clone https://github.com/jaylfc/myrktop.git
 cd myrktop
-chmod +x myrktop.sh
+
+# Install the monitor
+sudo ./install.sh
 ```
+
+The install script will:
+1. Install required dependencies (lm-sensors)
+2. Set up the monitoring scripts
+3. Configure temperature sensors
+4. Create an easy-to-use command 'rktop'
 
 ## Usage
 
-For basic monitoring:
+After installation, simply run:
 ```bash
-./myrktop.sh
+sudo rktop
 ```
 
-For full monitoring on Orange Pi 5 Plus (including RGA and NPU):
-```bash
-sudo ./myrktop.sh
-```
+Press Ctrl+C to exit the monitor.
 
-The script automatically detects if it's running on an Orange Pi 5 Plus and enables the appropriate features.
+## Hardware Support
 
-## Contributing
+This fork is specifically optimized for the Orange Pi 5 Plus with:
+- RK3588 SoC
+- Mali-G610 MC4 GPU
+- RKNPU2 v2.0.0
+- RGA3/2 2D graphics accelerator
 
-Feel free to submit issues and enhancement requests! Pull requests are welcome.
+## Original Project
+
+This is a fork of [myrktop](https://github.com/mhl221135/myrktop) optimized for the Orange Pi 5 Plus.
 
 ## License
 
-This project is licensed under the same terms as the original myrktop project.
-
-## Acknowledgments
-
-- Original myrktop project by mhl221135
-- Orange Pi 5 Plus optimization contributors
+This project is licensed under the terms of the original myrktop project.
