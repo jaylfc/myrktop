@@ -1,145 +1,99 @@
 #!/bin/bash
 
-# Function to read privileged files
-read_sudo_file() {
-    sudo cat "$1" 2>/dev/null || echo "N/A"
-}
-
 echo "🔥 Orange Pi 5 Plus - System Monitor 🔥"
 
-# 🌍 Device Info
-device_info=$(cat /sys/firmware/devicetree/base/compatible 2>/dev/null | tr -d '\0' || echo "N/A")
+# Device Info
+device_info=$(cat /proc/device-tree/compatible 2>/dev/null | tr -d '\0' || echo "N/A")
 echo "Device: $device_info"
+npu_version=$(cat /sys/kernel/debug/rknpu/version 2>/dev/null || echo "N/A")
+echo "Version: $npu_version"
 echo "--------------------------------------"
 
-# 📊 CPU Usage & Frequency
+# CPU Usage & Frequency
 echo "📊 CPU Usage & Frequency:"
 
-# Get number of CPU cores dynamically
-num_cores=$(nproc --all)
-echo "Number of CPU cores: $num_cores"
+# Get total CPU usage
+cpu_load=$(top -bn1 | grep "Cpu(s)" | sed 's/.*, *\([0-9.]*\)%* id.*/\1/' | awk '{print 100 - $1}' | cut -d. -f1)
+echo "Total CPU Load: ${cpu_load}%"
 
-# Capture CPU load over time for all cores
-declare -a cpu_loads
-declare -a prev_total
-declare -a prev_idle
-
-# Initialize arrays for all cores
-for i in $(seq 0 $((num_cores-1))); do
-    stats=$(grep "cpu$i " /proc/stat)
-    if [ -n "$stats" ]; then
-        read -r cpu user nice system idle iowait irq softirq steal guest guest_nice <<< "$stats"
-        prev_total[i]=$((user + nice + system + idle + iowait + irq + softirq + steal))
-        prev_idle[i]=$idle
+# Get individual core usage from /proc/stat
+declare -A cpu_stats_old cpu_stats_new
+while IFS= read -r line; do
+    if [[ $line =~ ^cpu([0-9]+) ]]; then
+        core=${BASH_REMATCH[1]}
+        cpu_stats_old[$core]=$line
     fi
-done
+done < /proc/stat
 
-sleep 1
+sleep 0.2
 
-# Calculate CPU usage for each core
-total_load=0
-for i in $(seq 0 $((num_cores-1))); do
-    stats=$(grep "cpu$i " /proc/stat)
-    if [ -n "$stats" ]; then
-        read -r cpu user nice system idle iowait irq softirq steal guest guest_nice <<< "$stats"
-        total=$((user + nice + system + idle + iowait + irq + softirq + steal))
-        diff_total=$((total - prev_total[i]))
-        diff_idle=$((idle - prev_idle[i]))
-        if [ $diff_total -ne 0 ]; then
-            cpu_loads[i]=$((100 * (diff_total - diff_idle) / diff_total))
-            total_load=$((total_load + cpu_loads[i]))
-        else
-            cpu_loads[i]=0
-        fi
+while IFS= read -r line; do
+    if [[ $line =~ ^cpu([0-9]+) ]]; then
+        core=${BASH_REMATCH[1]}
+        cpu_stats_new[$core]=$line
     fi
-done
+done < /proc/stat
 
-# Calculate average CPU load
-avg_load=$((total_load / num_cores))
-echo "Average CPU Load: ${avg_load}%"
-
-# Print individual core information
-for i in $(seq 0 $((num_cores-1))); do
+# Calculate and display each core's usage
+for i in {0..7}; do
     freq=$(cat /sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq 2>/dev/null || echo 0)
-    printf "Core %d: %s%% %d MHz\n" "$i" "${cpu_loads[i]}" "$((freq / 1000))"
-done
+    freq_mhz=$((freq/1000))
 
-echo "--------------------------------------"
-
-# 🎮 GPU Load & Frequency
-gpu_path="/sys/devices/platform/fb000000.gpu-panthor/devfreq/fb000000.gpu-panthor"
-if [ -d "$gpu_path" ]; then
-    gpu_load=$(awk -F'[@ ]' '{print $1}' "$gpu_path/load" 2>/dev/null || echo "N/A")
-    gpu_freq=$(cat "$gpu_path/cur_freq" 2>/dev/null || echo "N/A")
-    if [ "$gpu_freq" != "N/A" ]; then
-        gpu_freq_mhz=$((gpu_freq / 1000000))
+    old=(${cpu_stats_old[$i]})
+    new=(${cpu_stats_new[$i]})
+    old=("${old[@]:1}")
+    new=("${new[@]:1}")
+    
+    old_sum=0
+    new_sum=0
+    for j in {0..9}; do
+        old_sum=$((old_sum + ${old[$j]:-0}))
+        new_sum=$((new_sum + ${new[$j]:-0}))
+    done
+    
+    old_idle=${old[3]}
+    new_idle=${new[3]}
+    
+    diff_idle=$((new_idle - old_idle))
+    diff_total=$((new_sum - old_sum))
+    
+    if [ $diff_total -eq 0 ]; then
+        usage=$cpu_load
     else
-        gpu_freq_mhz="N/A"
+        usage=$(( 100 * (diff_total - diff_idle) / diff_total ))
     fi
-    echo "🎮 GPU Load: ${gpu_load}%"
-    echo "🎮 GPU Frequency: ${gpu_freq_mhz} MHz"
-else
-    echo "🎮 GPU information not available"
-fi
 
-# 🖼️ RGA Load
-echo -e "\n🖼️ RGA Load:"
-rga_load=$(read_sudo_file "/sys/kernel/debug/rkrga/load")
-if [ "$rga_load" != "N/A" ]; then
-    echo "$rga_load" | grep -E "load = |scheduler"
-else
-    echo "RGA load information not available"
-fi
-
-# 🧠 NPU Information
-echo -e "\n🧠 NPU Information:"
-npu_path="/sys/class/devfreq/fdab0000.npu"
-npu_debug="/sys/kernel/debug/rknpu"
-
-# NPU Frequency from devfreq
-if [ -d "$npu_path" ]; then
-    npu_freq=$(cat "$npu_path/cur_freq" 2>/dev/null || echo "N/A")
-    if [ "$npu_freq" != "N/A" ]; then
-        npu_freq_mhz=$((npu_freq / 1000000))
-        echo "NPU Frequency: ${npu_freq_mhz} MHz"
-    fi
-fi
-
-# NPU Load from debug fs
-npu_load=$(read_sudo_file "$npu_debug/load")
-if [ "$npu_load" != "N/A" ]; then
-    echo "NPU Load: $npu_load"
-fi
-
-# NPU Power from debug fs
-npu_power=$(read_sudo_file "$npu_debug/power")
-if [ "$npu_power" != "N/A" ]; then
-    echo "NPU Power: $npu_power"
-fi
-
+    echo "Core $i: ${usage}% $freq_mhz MHz"
+done
 echo "--------------------------------------"
 
-# 🖥️ RAM & Swap Usage
+# GPU Load & Frequency
+gpu_path="/sys/devices/platform/fb000000.gpu-panthor/devfreq/fb000000.gpu-panthor"
+gpu_load=$(awk -F'[@ ]' '{print $1}' "$gpu_path/load" 2>/dev/null || echo "0")
+gpu_freq=$(cat "$gpu_path/cur_freq" 2>/dev/null || echo "0")
+echo "🎮 GPU Load: ${gpu_load}%"
+echo "🎮 GPU Frequency: $((gpu_freq / 1000000)) MHz"
+
+# NPU Load & Frequency
+npu_load=$(cat /sys/kernel/debug/rknpu/load 2>/dev/null | sed -E 's/NPU load: //; s/Core[0-2]: //g; s/  +/ /g; s/,//g; s/%//g' | xargs -n3 | sed 's/ / % /g; s/$/ %/' || echo "0 % 0 % 0 %")
+npu_freq=$(cat /sys/class/devfreq/fdab0000.npu/cur_freq 2>/dev/null || echo "0")
+echo "🧠 NPU Load: $npu_load"
+echo "🧠 NPU Frequency: $((npu_freq / 1000000)) MHz"
+
+# RGA Load
+rga_load=$(cat /sys/kernel/debug/rkrga/load 2>/dev/null | grep -oP 'load = \K[0-9]+(?=%)' | paste -sd ' ' | sed 's/$/ %/' || echo "0 0 0 %")
+echo "🖼️ RGA Load: $rga_load"
+
+echo "--------------------------------------"
+# RAM & Swap Usage
 echo "🖥️ RAM & Swap Usage:"
 free -h | awk '/Mem:/ {print "RAM Used: " $3 " / " $2}'
 free -h | awk '/Swap:/ {print "Swap Used: " $3 " / " $2}'
 
 echo "--------------------------------------"
-
-# 🌡️ Temperatures
+# Temperatures
 echo "🌡️ Temperatures:"
-if command -v sensors &> /dev/null; then
-    sensors | awk '
-    /thermal|nvme|gpu/ {name=$1}
-    /temp1|Composite/ {print name ": " $2}
-    '
-else
-    # Fallback to reading directly from thermal zones
-    for thermal in /sys/class/thermal/thermal_zone*/temp; do
-        if [ -f "$thermal" ]; then
-            temp=$(awk '{printf "%.1f°C\n", $1/1000}' "$thermal")
-            zone=$(basename "$(dirname "$thermal")")
-            echo "$zone: $temp"
-        fi
-    done
-fi
+sensors | awk '
+/thermal|nvme|gpu/ {name=$1}
+/temp1|Composite/ {print name ": " $2}
+'
