@@ -1,116 +1,140 @@
-# 🖥️ myrktop - Orange Pi 5 (RK3588) System Monitor COLORED BRANCH
+# 🖥️ myrktop — Orange Pi 5 (RK3588) System Monitor
 
-🔥 **myrktop** is a lightweight system monitor for **Orange Pi 5 (RK3588)**, providing real-time information about **CPU, GPU, NPU, RAM, RGA, and system temperatures**.
+🔥 **myrktop** is a lightweight, real-time system monitor for **Orange Pi 5 (RK3588)** built with Python and urwid. It provides live stats for CPU, GPU, NPU, RAM, temperatures, network, disk, and SMART storage health — all in a scrollable terminal dashboard.
 
-## **📥 Installation Instructions**
-### **1️⃣ Install Required Dependencies**
-Before running the script, install dependencies to fetch readings:
+---
+
+## 📥 Installation
+
+### 1️⃣ Install Dependencies
 ```bash
-sudo apt update && sudo apt install -y python3 python3-pip lm-sensors smartmontools nvme-cli && sudo sensors-detect --auto && pip3 install urwid
+sudo apt update && sudo apt install -y python3 python3-pip lm-sensors smartmontools nvme-cli
+sudo sensors-detect --auto
+pip3 install urwid
 ```
 
-### **2️⃣ Download and Install myrktop**
-Run the following command to download and install the script:
+### 2️⃣ Download & Install myrktop
 ```bash
 wget -O ~/myrktop.py https://raw.githubusercontent.com/mhl221135/myrktop/refs/heads/main/myrktop.py
 wget -O /usr/local/bin/myrktop https://raw.githubusercontent.com/mhl221135/myrktop/refs/heads/main/myrktop
-```
-Then, make the script executable:
-```bash
 sudo chmod +x /usr/local/bin/myrktop
 ```
 
-### **3️⃣ Run the Monitoring Script**
-To run the script use:
+### 3️⃣ Run
 ```bash
 myrktop
 ```
 
 ---
 
-## **📊 Features**
-- **Real-time CPU load & frequency monitoring (per core)**
-- **Live GPU usage & frequency**
-- **NPU & RGA usage**
-- **RAM & Swap usage**
-- **System temperature readings**
-- **Network interfaces: Down/Up readings**
-- **Storage Usage (/etc/fstab)**
-- **NVMe & ATA Storage Info:**
+## 📊 Features
 
+| Category | Details |
+|---|---|
+| **CPU** | Per-core load + frequency with ASCII progress bars |
+| **GPU** | Load % + frequency with colored progress bar |
+| **NPU** | Per-core load % + frequency |
+| **RGA** | Rockchip RGA engine utilisation |
+| **RAM & Swap** | Usage with ASCII progress bars + percentages |
+| **Temperatures** | Color-coded: 🟢 <60°C  🟡 60–69°C  🔴 ≥70°C |
+| **Network** | Per-interface Down/Up in Mbps |
+| **Disk Usage** | All /etc/fstab mountpoints via fast `statvfs()` (no subprocess) |
+| **SMART Health** | NVMe & ATA drive info — refreshed in background every 60 s |
+| **Top Processes** | Top 5 CPU-consuming processes (PID, name, RSS) |
 
 ---
 
-## **📌 Example Output**
-```bash
-──────────────────────────────────────────────────
-🔥 System Monitor
-──────────────────────────────────────────────────
-Device: rockchip,rk3588s-orangepi-5rockchip,rk3588
-NPU Version: RKNPU driver: v0.9.8
-System Uptime: up 17 hours, 30 minutes
-Docker Status: Running ✅
-──────────────────────────────────────────────────
-📊 CPU Usage & Frequency:
-Core 0:  12% 1800 MHz   Core 1:   3% 1800 MHz
-Core 2:   9% 1800 MHz   Core 3:   6% 1800 MHz
-Core 4:   3% 2352 MHz   Core 5:   4% 2352 MHz
-Core 6:  20% 2304 MHz   Core 7:  17% 2304 MHz
-──────────────────────────────────────────────────
-🎮 GPU Load:   0%    300 MHz
-──────────────────────────────────────────────────
-🧠 NPU Load: 0% 0% 0%   1000 MHz
-──────────────────────────────────────────────────
-🖼️  RGA Load: 0% 0% 0%
-──────────────────────────────────────────────────
-🖥️  RAM & Swap Usage:
-RAM Used: 2.4Gi / 15Gi
-Swap Used: 5.0Mi / 7.8Gi
-──────────────────────────────────────────────────
-🌡️  Temperatures:
+## ⌨️ Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `q` / `Q` | Quit |
+| `r` / `R` | Cycle refresh rate: **0.5 s → 1 s → 2 s** |
+| `h` / `H` | Toggle help overlay |
+| `↑` / `↓` | Scroll dashboard |
+| `PgUp` / `PgDn` | Page scroll |
+
+---
+
+## ⏱️ Refresh Tiers
+
+Different data types update at different rates for optimal performance:
+
+| Section | Interval |
+|---------|----------|
+| CPU load & frequency | every tick (0.5 s default) |
+| RAM, Swap, Network | 1 s |
+| Temperatures, Top Processes | 2 s |
+| Disk usage | 5 s |
+| Device info, Docker status | 5 s |
+| **SMART drive health** | **60 s (background thread)** |
+
+---
+
+## 📌 Example Output
+
+```
+────────────────────────────────────────────────────
+🔥  myrktop — System Monitor
+────────────────────────────────────────────────────
+Device : rockchip,rk3588s-orangepi-5rockchip,rk3588
+NPU Ver: RKNPU driver: v0.9.8
+Uptime : up 17 hours, 30 minutes
+Docker : Running ✅
+────────────────────────────────────────────────────
+📊 CPU Usage & Frequency
+Core  0: ████░░░░░░░░░░░░  22%  1800 MHz
+Core  1: ██░░░░░░░░░░░░░░  12%  1800 MHz
+Core  4: █████████░░░░░░░  55%  2352 MHz
+Core  7: ████████████████  98%  2304 MHz   ← red
+────────────────────────────────────────────────────
+🎮 GPU  : ░░░░░░░░░░░░░░░░   0%   300 MHz
+────────────────────────────────────────────────────
+🧠 NPU  : 0% 0% 0%   1000 MHz
+────────────────────────────────────────────────────
+🖥️  RAM & Swap
+RAM  : ████████░░░░░░░░  42%  2.4G / 15G
+Swap : █░░░░░░░░░░░░░░░   6%  512M / 7.8G
+────────────────────────────────────────────────────
+🌡️  Temperatures
 npu_thermal-virtual-0          30°C
-center_thermal-virtual-0       30°C
-bigcore1_thermal-virtual-0     31°C
-soc_thermal-virtual-0          31°C
-nvme-pci-44100                 28°C
 gpu_thermal-virtual-0          30°C
-littlecore_thermal-virtual-0   31°C
-bigcore0_thermal-virtual-0     31°C
-──────────────────────────────────────────────────
-🌐 Network Traffic:
-wlan0: Down 0.1 Mbps | Up 2.00 Mbps
-eth0: Down 0.91 Mbps | Up 0.06 Mbps
-──────────────────────────────────────────────────
-💾 Storage Usage (/etc/fstab):
-Mount Point             Total     Used     Free
-/                         59G     7.2G      51G
-/media/ssdmount          938G     387G     504G
-/media/wdmount           1.8T     1.5T     233G
-/media/500hdd            458G     149G     286G
-──────────────────────────────────────────────────
+────────────────────────────────────────────────────
+🌐 Network Traffic
+eth0          ↓    0.91 Mbps   ↑    0.06 Mbps
+wlan0         ↓    0.10 Mbps   ↑    2.00 Mbps
+────────────────────────────────────────────────────
+💾 Storage Usage (/etc/fstab)
+Mount Point             Total     Used     Free  Use%
+/                        59.0G    7.2G    51.0G   12%
+/media/ssdmount         938.0G  387.0G   504.0G  41%
+────────────────────────────────────────────────────
 NVMe Devices:
-/dev/nvme0n1 - SPCC M.2 PCIe SSD | Temp: 29°C | Hours: 829 | Spare: 100%
+/dev/nvme0n1 — SPCC M.2 PCIe SSD  29°C  829H  spare:100%
 ATA Devices:
-/dev/sda - WDC WD20NMVW-11AV3S2 | Temp: 35°C | Hours: 17169 | 5200 rpm
-/dev/sdb - WDC WD5000LPLX-00ZNTT0 | Temp: 33°C | Hours: 28406 | 7200 rpm
-──────────────────────────────────────────────────
-Press 'q' to exit. Use arrows or mouse to scroll.
+/dev/sda — WDC WD20NMVW-11AV3S2  35°C  17169H  5200 rpm
+────────────────────────────────────────────────────
+⚡ Top Processes (by CPU time)
+     PID  Name                CPU Ticks       RSS
+    1234  node                    48291    256.0M
+    5678  python3                 29810     98.5M
+────────────────────────────────────────────────────
+[q] Quit   [r] Refresh 500ms   [h] Help   ↑↓ Scroll
 ```
 
 ---
 
-## **🔧 How to Contribute**
-If you find a bug or want to improve **myrktop**, feel free to fork the repository and submit a pull request.
+## 🔧 How to Contribute
+Fork the repo and submit a pull request — issues and PRs welcome!
 
-📂 **GitHub Repository:** [https://github.com/mhl221135/myrktop](https://github.com/mhl221135/myrktop)
-
----
-
-## **❓ Support**
-If you have any issues, open an issue on GitHub, or contact me!
+📂 **GitHub:** [https://github.com/mhl221135/myrktop](https://github.com/mhl221135/myrktop)
 
 ---
 
-### **🔗 License**
-This project is **open-source** and available under the **MIT License**.
+## ❓ Support
+Open a GitHub issue or contact me directly.
 
+---
+
+## 🔗 License
+Open-source under the **MIT License**.
