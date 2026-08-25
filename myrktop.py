@@ -851,7 +851,7 @@ def build_dashboard():
             label  = mount_map.get(dev) or f"/dev/{dev}"
             r_str  = f"{r_kb/1024:.2f} MB/s" if r_kb >= 1024 else f"{r_kb:.1f} KB/s"
             w_str  = f"{w_kb/1024:.2f} MB/s" if w_kb >= 1024 else f"{w_kb:.1f} KB/s"
-            lines.append(("default", f"{label:<22}  Read {r_str:>12}   Write {w_str:>12}"))
+            lines.append(("default", f"{label:<22}  R {r_str:>12}   W {w_str:>12}"))
     else:
         lines.append(("dim", "  Collecting I/O data…"))
 
