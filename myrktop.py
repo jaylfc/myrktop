@@ -839,6 +839,7 @@ def build_dashboard():
     lines.append(("header", SEP))
     lines.append(("title", "💿 Disk I/O Rates"))
     io_rates  = get_disk_io()
+    mount_map = get_mount_map()
     # Only show top-level disks (sda, sdb, nvme0n1 …) — skip partitions
     io_devs   = {
         dev: rates for dev, rates in io_rates.items()
@@ -846,9 +847,11 @@ def build_dashboard():
     }
     if io_devs:
         for dev, (r_kb, w_kb) in sorted(io_devs.items()):
-            r_str = f"{r_kb/1024:.2f} MB/s" if r_kb >= 1024 else f"{r_kb:.1f} KB/s"
-            w_str = f"{w_kb/1024:.2f} MB/s" if w_kb >= 1024 else f"{w_kb:.1f} KB/s"
-            lines.append(("default", f"/dev/{dev:<12}  R {r_str:>12}   W {w_str:>12}"))
+            # Use mount path as label when available, otherwise /dev/sdX
+            label  = mount_map.get(dev) or f"/dev/{dev}"
+            r_str  = f"{r_kb/1024:.2f} MB/s" if r_kb >= 1024 else f"{r_kb:.1f} KB/s"
+            w_str  = f"{w_kb/1024:.2f} MB/s" if w_kb >= 1024 else f"{w_kb:.1f} KB/s"
+            lines.append(("default", f"{label:<22}  Read {r_str:>12}   Write {w_str:>12}"))
     else:
         lines.append(("dim", "  Collecting I/O data…"))
 
